@@ -636,6 +636,38 @@ document.addEventListener("DOMContentLoaded", () => {
       return txt.indexOf(term + " ") !== -1 || txt.indexOf(" " + term) !== -1;
     }
 
+    function quatMul(a, b) {
+      return {
+        w: a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z,
+        x: a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y,
+        y: a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x,
+        z: a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w
+      };
+    }
+    function quatNorm(q) {
+      var len = Math.sqrt(q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+      if (len < 1e-10) return {w:1,x:0,y:0,z:0};
+      return {w:q.w/len, x:q.x/len, y:q.y/len, z:q.z/len};
+    }
+    function quatAxis(ax, ay, az, angle) {
+      var half = angle * 0.5;
+      var s = Math.sin(half);
+      var len = Math.sqrt(ax*ax + ay*ay + az*az);
+      if (len < 1e-10) return {w:1,x:0,y:0,z:0};
+      return {w:Math.cos(half), x:ax/len*s, y:ay/len*s, z:az/len*s};
+    }
+    function quatApply(q, px, py, pz) {
+      var qx=q.x, qy=q.y, qz=q.z, qw=q.w;
+      var tx = 2*(qy*pz - qz*py);
+      var ty = 2*(qz*px - qx*pz);
+      var tz = 2*(qx*py - qy*px);
+      return {
+        x: px + qw*tx + (qy*tz - qz*ty),
+        y: py + qw*ty + (qz*tx - qx*tz),
+        z: pz + qw*tz + (qx*ty - qy*tx)
+      };
+    }
+
     var scene = document.createElement("div");
     scene.className = "sphere__scene";
     var pivot = document.createElement("div");
@@ -838,8 +870,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    var rotX = 0.3;
-    var rotY = 0;
+    var quat = quatAxis(1, 0, 0, 0.3);
     var autoSpeedX = 0.0015;
     var autoSpeedY = 0.004;
     var isDragging = false;
@@ -855,32 +886,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function update() {
       if (!isDragging && !isPaused) {
-        rotY += autoSpeedY;
-        rotX += autoSpeedX;
+        var qY = quatAxis(0, 1, 0, autoSpeedY);
+        var qX = quatAxis(1, 0, 0, autoSpeedX);
+        quat = quatMul(qX, quatMul(quat, qY));
       } else if (isDragging) {
-        rotY += velX;
-        rotX += velY;
+        var qY = quatAxis(0, 1, 0, velX);
+        var qX = quatAxis(1, 0, 0, velY);
+        quat = quatMul(qX, quatMul(quat, qY));
         velX *= 0.92;
         velY *= 0.92;
       }
-
-      var cx = Math.cos(-rotX),
-        sx = Math.sin(-rotX);
-      var cy = Math.cos(rotY),
-        sy = Math.sin(rotY);
+      quat = quatNorm(quat);
 
       for (var i = 0; i < itemsArr.length; i++) {
         var it = itemsArr[i];
-        var x1 = it.x * cy + it.z * sy;
-        var z1 = -it.x * sy + it.z * cy;
-        var y2 = it.y * cx - z1 * sx;
-        var z2 = it.y * sx + z1 * cx;
-        var depth = (z2 + 1) * 0.5;
+        var p = quatApply(quat, it.x, it.y, it.z);
+        var depth = (p.z + 1) * 0.5;
         var opacity = 0.35 + depth * 0.65;
         var scale = 0.7 + depth * 0.3;
 
-        it.cx = x1 * sphereRadius;
-        it.cy = y2 * sphereRadius;
+        it.cx = p.x * sphereRadius;
+        it.cy = p.y * sphereRadius;
         it.depth = depth;
         it.img.style.opacity = opacity;
         it.el.style.zIndex = it.el.matches(":hover") ? 200 : Math.round(depth * 100);
@@ -948,8 +974,8 @@ document.addEventListener("DOMContentLoaded", () => {
       var dx = e.clientX - mouseDownX;
       var dy = e.clientY - mouseDownY;
       if (Math.abs(dx) > 4 || Math.abs(dy) > 4) didDrag = true;
-      velX = (lastX - e.clientX) * 0.006;
-      velY = (e.clientY - lastY) * 0.006;
+      velX = (e.clientX - lastX) * 0.006;
+      velY = (lastY - e.clientY) * 0.006;
       lastX = e.clientX;
       lastY = e.clientY;
     });
@@ -975,8 +1001,8 @@ document.addEventListener("DOMContentLoaded", () => {
         var dx = e.touches[0].clientX - mouseDownX;
         var dy = e.touches[0].clientY - mouseDownY;
         if (Math.abs(dx) > 4 || Math.abs(dy) > 4) didDrag = true;
-        velX = (lastX - e.touches[0].clientX) * 0.006;
-        velY = (e.touches[0].clientY - lastY) * 0.006;
+        velX = (e.touches[0].clientX - lastX) * 0.006;
+        velY = (lastY - e.touches[0].clientY) * 0.006;
         lastX = e.touches[0].clientX;
         lastY = e.touches[0].clientY;
       },
