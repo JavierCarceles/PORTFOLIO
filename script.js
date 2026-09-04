@@ -596,6 +596,7 @@ document.addEventListener("DOMContentLoaded", () => {
       { name: "Postman", slug: "postman", color: "FF6C37" },
       { name: "Jira", slug: "jira", color: "0052CC" },
       { name: "SonarQube", slug: "sonarqubeserver", color: "4E9BCD" },
+      { name: "Jenkins", slug: "jenkins", color: "D33833" },
       { name: "IA", slug: "pytorch", color: "EE4C2C" },
       { name: "JSON", slug: "json", color: "FFFFFF" },
     ];
@@ -626,6 +627,7 @@ document.addEventListener("DOMContentLoaded", () => {
       Postman: "postman",
       Jira: "jira",
       SonarQube: "sonarqube",
+      Jenkins: "jenkins",
       IA: "ia",
       JSON: "bases de datos",
     };
